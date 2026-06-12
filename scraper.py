@@ -18,6 +18,7 @@ def get_books(url, pages=1):
         print(f"getting data from {current_url}...")
         
         resp = requests.get(current_url, headers=headers)
+        resp.encoding = 'utf-8'
         if resp.status_code != 200:
             print(f"bad response: {resp.status_code}")
             break
@@ -54,7 +55,7 @@ if __name__ == "__main__":
     
     if data:
         # save to csv
-        with open(args.output, 'w', newline='', encoding='utf-8') as f:
+        with open(args.output, 'w', newline='', encoding='utf-8-sig') as f:
             writer = csv.DictWriter(f, fieldnames=data[0].keys())
             writer.writeheader()
             writer.writerows(data)
