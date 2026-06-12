@@ -4,72 +4,61 @@ import csv
 import datetime
 import argparse
 
-def scrape_books(category_url, num_pages=1):
+def get_books(url, pages=1):
+    # standard user agent so we don't get blocked immediately
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/91.0.4472.124"
     }
     
-    data = []
+    results = []
     
-    for page in range(1, num_pages + 1):
-        url = category_url if page == 1 else category_url.replace("index.html", f"page-{page}.html")
-        print(f"[INFO] Scraping {url}...")
+    for p in range(1, pages + 1):
+        # handling pagination
+        current_url = url if p == 1 else url.replace("index.html", f"page-{p}.html")
+        print(f"getting data from {current_url}...")
         
-        response = requests.get(url, headers=headers)
-        
-        if response.status_code != 200:
-            print(f"[ERROR] Failed to retrieve page {page}. Status code: {response.status_code}")
+        resp = requests.get(current_url, headers=headers)
+        if resp.status_code != 200:
+            print(f"bad response: {resp.status_code}")
             break
 
-        soup = BeautifulSoup(response.text, "html.parser")
-        books = soup.find_all("article", class_="product_pod")
+        soup = BeautifulSoup(resp.text, "html.parser")
+        items = soup.find_all("article", class_="product_pod")
         
-        if not books:
+        if len(items) == 0:
             break
             
-        for book in books:
-            title_element = book.find("h3").find("a")
-            price_element = book.find("p", class_="price_color")
-            availability_element = book.find("p", class_="instock availability")
+        for item in items:
+            title_tag = item.find("h3").find("a")
+            price_tag = item.find("p", class_="price_color")
+            stock_tag = item.find("p", class_="instock availability")
             
-            if title_element and price_element:
-                title = title_element["title"]
-                price = price_element.text.strip()
-                availability = availability_element.text.strip()
-                
-                data.append({
-                    "Title": title,
-                    "Price": price,
-                    "Availability": availability,
-                    "Date Scraped": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            if title_tag and price_tag:
+                results.append({
+                    "title": title_tag["title"],
+                    "price": price_tag.text.strip(),
+                    "stock": stock_tag.text.strip(),
+                    "scraped_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
                 })
                 
-    return data
-
-def main():
-    parser = argparse.ArgumentParser(description="E-commerce Price Tracker")
-    parser.add_argument("--url", type=str, default="http://books.toscrape.com/catalogue/category/books/science_22/index.html", help="Category URL to scrape")
-    parser.add_argument("--pages", type=int, default=1, help="Number of pages to scrape")
-    parser.add_argument("--output", type=str, default="output.csv", help="Output CSV file name")
-    
-    args = parser.parse_args()
-    
-    print(f"[INFO] Starting scraper for: {args.url}")
-    results = scrape_books(args.url, args.pages)
-    
-    if results:
-        keys = results[0].keys()
-        with open(args.output, 'w', newline='', encoding='utf-8') as output_file:
-            dict_writer = csv.DictWriter(output_file, fieldnames=keys)
-            dict_writer.writeheader()
-            dict_writer.writerows(results)
-            
-        print(f"[SUCCESS] Scraped {len(results)} items and saved to {args.output}")
-        print("\nSample Data:")
-        for i in range(min(3, len(results))):
-            print(f"- {results[i]['Title']} | {results[i]['Price']}")
-    else:
-        print("[WARNING] No data found or scraping was blocked.")
+    return results
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--url", default="http://books.toscrape.com/catalogue/category/books/science_22/index.html")
+    parser.add_argument("--pages", type=int, default=1)
+    parser.add_argument("--output", default="output.csv")
+    args = parser.parse_args()
+    
+    data = get_books(args.url, args.pages)
+    
+    if data:
+        # save to csv
+        with open(args.output, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=data[0].keys())
+            writer.writeheader()
+            writer.writerows(data)
+            
+        print(f"done! saved {len(data)} items to {args.output}")
+    else:
+        print("nothing found.")
