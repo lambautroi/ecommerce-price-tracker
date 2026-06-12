@@ -48,7 +48,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", default="http://books.toscrape.com/catalogue/category/books/science_22/index.html")
     parser.add_argument("--pages", type=int, default=1)
-    parser.add_argument("--output", default="output.csv")
+    parser.add_argument("--output", default="books_data.csv")
     args = parser.parse_args()
     
     data = get_books(args.url, args.pages)
